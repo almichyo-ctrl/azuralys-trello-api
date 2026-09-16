@@ -1,6 +1,18 @@
 const TRELLO_API = "https://api.trello.com/1";
 
+function setCorsHeaders(res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
 export default async function handler(req, res) {
+  setCorsHeaders(res);
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({
       error: "Méthode non autorisée",
@@ -17,9 +29,14 @@ export default async function handler(req, res) {
     }
 
     const allowedActions = {
+      get_lists: {
+        method: "GET",
+        path: `/boards/${payload.boardId}/lists`,
+      },
+
       get_cards: {
         method: "GET",
-        path: `/boards/${payload.boardId}/cards`,
+        path: `/lists/${payload.listId}/cards`,
       },
 
       create_card: {
@@ -52,7 +69,7 @@ export default async function handler(req, res) {
     });
 
     for (const [key, value] of Object.entries(payload)) {
-      if (key !== "boardId" && key !== "cardId" && value !== undefined) {
+      if (key !== "boardId" && key !== "listId" && key !== "cardId" && value !== undefined) {
         params.set(key, String(value));
       }
     }
