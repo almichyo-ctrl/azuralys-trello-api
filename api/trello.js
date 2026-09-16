@@ -1,24 +1,3 @@
-const TRELLO_API = "https://api.trello.com/1";
-
-function setCorsHeaders(res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-}
-
-export default async function handler(req, res) {
-  setCorsHeaders(res);
-
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      error: "Méthode non autorisée",
-    });
-  }
-
   try {
     const { action, payload = {} } = req.body || {};
 
@@ -63,6 +42,12 @@ export default async function handler(req, res) {
       });
     }
 
+    if (!process.env.TRELLO_KEY || !process.env.TRELLO_TOKEN) {
+      return res.status(500).json({
+        error: "TRELLO_KEY ou TRELLO_TOKEN manquant côté serveur (variables d'environnement Vercel).",
+      });
+    }
+
     const params = new URLSearchParams({
       key: process.env.TRELLO_KEY,
       token: process.env.TRELLO_TOKEN,
@@ -84,7 +69,14 @@ export default async function handler(req, res) {
       }
     );
 
-    const data = await response.json();
+    const rawText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      // Trello répond parfois en texte brut sur certaines erreurs
+      data = { error: rawText || "Réponse vide de l'API Trello" };
+    }
 
     return res.status(response.status).json(data);
   } catch (error) {
@@ -92,6 +84,6 @@ export default async function handler(req, res) {
 
     return res.status(500).json({
       error: "Erreur interne du serveur",
+      detail: String(error?.message || error),
     });
   }
-}
